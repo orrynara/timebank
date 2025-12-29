@@ -1,0 +1,11 @@
+﻿# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
+
+
+# Environment variables (DO NOT COMMIT!)
+.env
