@@ -1,304 +1,345 @@
 """TimeBank 핵심 비즈니스 로직.
 
-- ROI 계산
-- 예약 데이터 관리 (In-memory Mock)
-- 시스템 데이터 초기화 (Tujia 모델 기반)
+- 데이터 모델: Region > Campsite > Unit
+- 예약 관리 및 ROI 계산
+- 시스템 초기화 (Mock Data: 5대 랜드마크 포함)
+- Viral Marketing Logic (공유 점장, 포인트 시스템) 포함
 """
 
 import datetime
-from dataclasses import dataclass, field
-from typing import List, Optional, Dict
+import uuid
 import random
+from dataclasses import dataclass, field
+from typing import List, Optional, Dict, Tuple
 
 # --- 데이터 모델 ---
 @dataclass
-class Region:
+class Unit:
     id: str
     name: str
-    description: str
-    image_prompt: str
+    price: int
+    max_guests: int
+    rating: float
+    image: str
+    tags: List[str]
 
 @dataclass
 class Campsite:
     id: str
     region_id: str
     name: str
-    location_desc: str
-    features: List[str]
-    type: str  # 'Z5', 'Capsule' 등
-    
-    # 신규 추가 속성 (Airbnb 스타일)
-    rating: float = 0.0
-    review_count: int = 0
+    description: str
+    units: List[Unit]
+    location_desc: str = ""
+    features: List[str] = field(default_factory=list)
     images: List[str] = field(default_factory=list)
-    base_price_weekday: int = 50000  # 평일 기본가
-    base_price_weekend: int = 150000 # 주말 기본가
-
-    # 기존 로직 호환성 유지 (Deprecated 예정)
-    price_half_day: int = 50000    # 오전/오후 4시간
-    price_overnight: int = 150000  # 1박 2일
+    base_price_weekday: int = 0  # ui/booking.py에서 참조하는 필드 추가
+    review_count: int = 0        # ui/booking.py에서 참조하는 필드 추가
+    rating: float = 0.0          # ui/booking.py에서 참조하는 필드 추가
 
 @dataclass
-class MembershipProduct:
+class Region:
     id: str
     name: str
-    price_monthly: int
-    benefits: str
+    description: str
+    image: str # Representative image
+
+@dataclass
+class User:
+    id: str
+    name: str
+    email: str
+    is_member: bool = False
+    points: int = 0
+    invite_code: str = field(default_factory=lambda: str(uuid.uuid4())[:8].upper())
+    referral_count: int = 0
+    total_earnings: int = 0 # 총 누적 수익 (포인트)
 
 @dataclass
 class Booking:
     id: str
+    unit_id: str
     user_id: str
-    campsite_id: str
-    date: datetime.date
-    time_slot: str  # 'AM', 'PM', 'OVERNIGHT'
-    status: str     # 'CONFIRMED', 'CANCELLED'
-    is_member: bool
-    membership_type: str # 'NONE', 'SMART', 'ROYAL'
-    payment_amount: int
+    check_in: datetime.date
+    check_out: datetime.date
+    guests: int
+    original_price: int
+    final_price: int
+    used_points: int = 0
+    earned_points: int = 0
+    invite_code_used: Optional[str] = None
+    status: str = "CONFIRMED"
     created_at: datetime.datetime = field(default_factory=datetime.datetime.now)
 
 # --- 시스템 클래스 ---
 class TimeBankSystem:
     def __init__(self):
-        self._regions = self._init_regions()
-        self._campsites = self._init_campsites()
-        self._memberships = self._init_memberships()
         self._bookings: List[Booking] = []
-        self._init_dummy_bookings()
-        
-    def _init_regions(self) -> List[Region]:
-        return [
-            Region(
-                id="R001", 
-                name="경기 양평", 
-                description="서울 근교, 숲속의 힐링 요새",
-                image_prompt="Futuristic glamping site in Yangpyeong forest, morning sunlight, nature retreat, sci-fi caravan Z5"
-            ),
-            Region(
-                id="R002", 
-                name="강원 춘천", 
-                description="호반의 도시, 물안개와 함께하는 아침",
-                image_prompt="Futuristic glamping site near Chuncheon lake, fog, serene water reflection, house type caravan"
-            ),
-            Region(
-                id="R003", 
-                name="제주 애월", 
-                description="에메랄드빛 바다와 현무암의 조화",
-                image_prompt="Futuristic glamping site in Jeju Aewol, ocean cliff, basalt rocks, capsule caravan, sunset"
-            ),
-            Region(
-                id="R004", 
-                name="충남 태안", 
-                description="서해 낙조와 갯벌 체험이 있는 곳",
-                image_prompt="Futuristic glamping site in Taean beach, sunset, mudflat activities, mobile caravan"
-            ),
-        ]
-        
-    def _init_campsites(self) -> List[Campsite]:
-        # 이미지 소스 (로컬 파일 및 외부 URL 혼합)
-        # 팁: 로컬 이미지가 없으면 외부 URL을 fallback으로 사용하도록 UI에서 처리하거나 여기서 유효한 경로를 설정
-        
-        return [
-            # 1. 양평 1호점 (Z5 우주선)
-            Campsite(
-                id="C001", 
-                region_id="R001", 
-                name="양평 1호점 (Z5 우주선)", 
-                location_desc="경기 양평군 서종면 깊은 숲속, 자연과 기술의 조화", 
-                features=["숲속 뷰", "프라이빗 데크", "AI 컨시어지", "Z5 모델"], 
-                type="Z5 우주선",
-                rating=4.98,
-                review_count=128,
-                images=[
-                    "assets/img/caravan_side.png", # 로컬
-                    "https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?auto=format&fit=crop&w=800&q=80", # 숲속 캠핑
-                    "https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?auto=format&fit=crop&w=800&q=80"  # 밤하늘
-                ],
-                base_price_weekday=50000,
-                base_price_weekend=150000
-            ),
-            # 2. 춘천 레이크뷰 (하우스형)
-            Campsite(
-                id="C002", 
-                region_id="R002", 
-                name="춘천 레이크뷰 (하우스형)", 
-                location_desc="강원 춘천시 남산면 북한강변, 물안개 피어오르는 호수", 
-                features=["리버 뷰", "수상 레저", "넓은 거실", "하우스형"], 
-                type="하우스형",
-                rating=4.85,
-                review_count=85,
-                images=[
-                    "assets/img/caravan_exterior.png", # 로컬
-                    "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80", # 호수 캠핑
-                    "https://images.unsplash.com/photo-1496080174650-637e3f22fa03?auto=format&fit=crop&w=800&q=80"  # 아침 안개
-                ],
-                base_price_weekday=50000,
-                base_price_weekend=150000
-            ),
-            # 3. 제주 애월 스테이 (캡슐형)
-            Campsite(
-                id="C003", 
-                region_id="R003", 
-                name="제주 애월 스테이 (캡슐형)", 
-                location_desc="제주 제주시 애월읍 해안도로, 바다 바로 앞", 
-                features=["오션 뷰", "올레길 인접", "미니멀 라이프", "캡슐형"], 
-                type="캡슐형",
-                rating=4.92,
-                review_count=210,
-                images=[
-                    "assets/img/caravan_interior.png", # 로컬 (내부)
-                    "https://images.unsplash.com/photo-1510312305653-8ed496efae75?auto=format&fit=crop&w=800&q=80", # 제주 바다
-                    "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?auto=format&fit=crop&w=800&q=80"  # 리조트 느낌
-                ],
-                base_price_weekday=50000,
-                base_price_weekend=150000
-            ),
-            # 4. 태안 오션 글램핑 (이동식)
-            Campsite(
-                id="C004", 
-                region_id="R004", 
-                name="태안 오션 글램핑 (이동식)", 
-                location_desc="충남 태안군 안면읍 꽃지해수욕장, 황금빛 석양", 
-                features=["낙조 전망", "갯벌 체험", "모빌리티", "이동식"], 
-                type="이동식",
-                rating=4.75,
-                review_count=50,
-                images=[
-                    "assets/img/caravan_main.jpg", # 로컬
-                    "https://images.unsplash.com/photo-1495954484750-af469f2f9be5?auto=format&fit=crop&w=800&q=80", # 석양
-                    "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80"  # 해변 리조트
-                ],
-                base_price_weekday=50000,
-                base_price_weekend=150000
-            ),
-        ]
+        self._regions: List[Region] = []
+        self._all_campsites: List[Campsite] = []
+        self._users: Dict[str, User] = {} # Mock User Database
+        self._init_data()
+        self._init_mock_users()
 
-    def _init_memberships(self) -> List[MembershipProduct]:
-        return [
-            MembershipProduct(
-                id="M_ROYAL",
-                name="리조트 로얄",
-                price_monthly=100000,
-                benefits="연 60박 무료, 성수기 우선 예약"
-            ),
-            MembershipProduct(
-                id="M_SMART",
-                name="투지아 스마트",
-                price_monthly=20000,
-                benefits="평일 유휴시간(4h) 무료, 주말 3만원 정액"
-            )
-        ]
+    def _init_mock_users(self):
+        """테스트용 사용자 초기화"""
+        # 데모 유저 생성
+        demo_user = User(id="demo_user", name="김타임", email="demo@timebank.com")
+        self._users["demo_user"] = demo_user
 
-    def _init_dummy_bookings(self):
-        """초기 데모용 예약 데이터 생성."""
-        today = datetime.date.today()
-        # 예약 1: 양평 1호점
-        self.create_booking(
-            user_id="demo_user",
-            campsite_id="C001",
-            date=today,
-            time_slot="OVERNIGHT",
-            is_member=True,
-            membership_type="M_ROYAL",
-            payment_amount=0
-        )
-        # 예약 2: 춘천 레이크뷰
-        self.create_booking(
-            user_id="demo_user",
-            campsite_id="C002",
-            date=today + datetime.timedelta(days=1),
-            time_slot="PM",
-            is_member=False,
-            membership_type="NONE",
-            payment_amount=50000
-        )
+    def _init_data(self):
+        """5대 랜드마크 Mock Data 초기화"""
+        
+        # 1. Region 정의
+        regions = {
+            "r_pocheon": Region("r_pocheon", "포천", "비행 기지와 호수의 조화", "assets/img/KakaoTalk_20251220_140745850_08.jpg"),
+            "r_gapyeong": Region("r_gapyeong", "가평", "깊은 숲속의 힐링", "assets/img/custom_20251229_072946.png"),
+            "r_yangpyeong": Region("r_yangpyeong", "양평", "강변의 럭셔리", "assets/img/KakaoTalk_20251220_140745850_11.jpg"),
+            "r_jeju": Region("r_jeju", "제주", "밤하늘과 우주선", "assets/img/KakaoTalk_20251220_140745850_06.jpg"),
+            "r_taean": Region("r_taean", "태안", "바다 위 선셋 글램핑", "assets/img/KakaoTalk_20251220_140745850_07.jpg"),
+        }
+        self._regions = list(regions.values())
+
+        # 2. Campsites & Units 정의
+
+        # (1) 포천 산정호수 (The Base)
+        units_pocheon = [
+            Unit(id="u_pc_01", name="더 베이스 A동", price=350000, max_guests=4, rating=4.9, image="assets/img/KakaoTalk_20251220_140745850_08.jpg", tags=["호수뷰", "스파", "SF컨셉"]),
+            Unit(id="u_pc_02", name="더 베이스 B동", price=280000, max_guests=2, rating=4.8, image="assets/img/caravan_interior.png", tags=["커플", "넷플릭스"])
+        ]
+        self._all_campsites.append(Campsite(
+            id="c_pocheon", region_id="r_pocheon", name="포천 산정호수 (The Base)", 
+            description="숲속 비행 기지 컨셉의 럭셔리 스테이", units=units_pocheon,
+            location_desc="경기도 포천시 영북면 산정호수로", features=["수상레저", "비행기지컨셉"], images=["assets/img/KakaoTalk_20251220_140745850_08.jpg"],
+            base_price_weekday=280000, review_count=128, rating=4.9
+        ))
+
+        # (2) 가평 아침고요 (Deep Forest)
+        units_gapyeong = [
+            Unit(id="u_gp_01", name="딥 포레스트 1호", price=420000, max_guests=6, rating=4.9, image="assets/img/custom_20251229_072946.png", tags=["숲속", "독채", "불멍"]),
+        ]
+        self._all_campsites.append(Campsite(
+            id="c_gapyeong", region_id="r_gapyeong", name="가평 아침고요 (Deep Forest)", 
+            description="착륙하는 우주선 컨셉의 프라이빗 빌라", units=units_gapyeong,
+            location_desc="경기도 가평군 상면 수목원로", features=["수목원", "피톤치드"], images=["assets/img/custom_20251229_072946.png"],
+            base_price_weekday=420000, review_count=85, rating=4.9
+        ))
+
+        # (3) 양평 리버사이드 (Water Front)
+        units_yangpyeong = [
+            Unit(id="u_yp_01", name="워터 프론트 스위트", price=380000, max_guests=4, rating=4.7, image="assets/img/KakaoTalk_20251220_140745850_11.jpg", tags=["리버뷰", "인피니티풀"]),
+        ]
+        self._all_campsites.append(Campsite(
+            id="c_yangpyeong", region_id="r_yangpyeong", name="양평 리버사이드 (Water Front)", 
+            description="강변에 정박한 우주선", units=units_yangpyeong,
+            location_desc="경기도 양평군 서종면", features=["수상스키", "바베큐"], images=["assets/img/KakaoTalk_20251220_140745850_11.jpg"],
+            base_price_weekday=380000, review_count=210, rating=4.7
+        ))
+
+        # (4) 제주 애월 스테이 (Night View)
+        units_jeju = [
+            Unit(id="u_jj_01", name="나이트 뷰 오션", price=550000, max_guests=4, rating=5.0, image="assets/img/KakaoTalk_20251220_140745850_06.jpg", tags=["오션뷰", "천문대"]),
+        ]
+        self._all_campsites.append(Campsite(
+            id="c_jeju", region_id="r_jeju", name="제주 애월 스테이 (Night View)", 
+            description="제주 밤바다와 우주선의 만남", units=units_jeju,
+            location_desc="제주특별자치도 제주시 애월읍", features=["오션뷰", "별관측"], images=["assets/img/KakaoTalk_20251220_140745850_06.jpg"],
+            base_price_weekday=550000, review_count=340, rating=5.0
+        ))
+
+        # (5) 태안 오션 글램핑 (Sunset)
+        units_taean = [
+            Unit(id="u_ta_01", name="선셋 글램핑 A", price=300000, max_guests=4, rating=4.8, image="assets/img/KakaoTalk_20251220_140745850_07.jpg", tags=["일몰", "갯벌체험"]),
+        ]
+        self._all_campsites.append(Campsite(
+            id="c_taean", region_id="r_taean", name="태안 오션 글램핑 (Sunset)", 
+            description="서해 낙조와 함께하는 감성 캠핑", units=units_taean,
+            location_desc="충청남도 태안군 안면읍", features=["해수욕장", "낙조"], images=["assets/img/KakaoTalk_20251220_140745850_07.jpg"],
+            base_price_weekday=300000, review_count=150, rating=4.8
+        ))
+
 
     def get_regions(self) -> List[Region]:
         return self._regions
-        
-    def get_campsites_by_region(self, region_id: str) -> List[Campsite]:
-        return [c for c in self._campsites if c.region_id == region_id]
 
+    def get_campsites_by_region(self, region_name: str) -> List[Campsite]:
+        if region_name == "지도 전체":
+            return self._all_campsites
+        target_region = next((r for r in self._regions if r.name == region_name), None)
+        if not target_region:
+            return []
+        return [c for c in self._all_campsites if c.region_id == target_region.id]
+    
     def get_all_campsites(self) -> List[Campsite]:
-        """모든 캠핑장 목록 반환 (전체 검색용)"""
-        return self._campsites
+        return self._all_campsites
 
-    def get_memberships(self) -> List[MembershipProduct]:
-        return self._memberships
+    def get_all_units(self) -> List[Unit]:
+        units = []
+        for c in self._all_campsites:
+            units.extend(c.units)
+        return units
+    
+    def find_unit_by_id(self, unit_id: str) -> Optional[Unit]:
+        for c in self._all_campsites:
+            for u in c.units:
+                if u.id == unit_id:
+                    return u
+        return None
 
-    def calculate_price(self, campsite: Campsite, is_member: bool, membership_type: str, time_slot: str, is_weekend: bool) -> int:
-        """동적 가격 계산 로직 (Tujia 모델 반영)."""
+    def get_user(self, user_id: str) -> Optional[User]:
+        return self._users.get(user_id)
+
+    def join_membership(self, user_id: str, plan_price: int = 50000):
+        """멤버십 가입 및 포인트 지급 로직"""
+        user = self._users.get(user_id)
+        if not user:
+            raise ValueError("User not found")
         
-        # 기본 가격 결정 (평일/주말)
-        base_price = campsite.base_price_weekend if is_weekend else campsite.base_price_weekday
-        
-        # 1. 일반 회원 (비회원)
-        if not is_member or membership_type == "NONE":
-            if time_slot == "OVERNIGHT":
-                return base_price
-            else: # AM, PM (4시간 이용) - 단순화하여 박 가격의 1/3 수준 또는 고정값
-                return 50000 # 시간당 요금제 또는 4시간 패키지 요금
-        
-        # 2. 멤버십 회원
-        if membership_type == "M_ROYAL":
-            # 로얄: 무료 (연 60박 차감 로직은 별도)
-            return 0
+        if user.is_member:
+            return # Already member
             
-        elif membership_type == "M_SMART":
-            # 스마트: 
-            # - 평일 4시간(AM/PM): 무료
-            # - 주말 4시간(AM/PM) or 숙박: 30,000원 정액
+        # 1. 실제로는 여기서 PG 결제 로직 수행 (50,000원)
+        
+        # 2. 멤버십 활성화 및 포인트 지급 (즉시 페이백)
+        user.is_member = True
+        user.points += plan_price
+        
+    def find_user_by_invite_code(self, code: str) -> Optional[User]:
+        for user in self._users.values():
+            if user.invite_code == code:
+                return user
+        return None
+
+    def calculate_price(self, campsite_or_unit, is_member: bool, membership_type: str, time_slot: str, is_weekend: bool) -> int:
+        """가격 계산 로직 (기존 booking.py 로직 이관)"""
+        # campsite_or_unit 처리
+        base_price = 0
+        if isinstance(campsite_or_unit, Campsite):
+             base_price = campsite_or_unit.base_price_weekday
+        elif isinstance(campsite_or_unit, Unit):
+             base_price = campsite_or_unit.price
+        
+        # 주말 할증 (20%)
+        if is_weekend:
+            base_price = int(base_price * 1.2)
             
-            if is_weekend or time_slot == "OVERNIGHT":
-                return 30000
+        # 시간대별 조정
+        # time_slot: AM(0.5), PM(0.6), OVERNIGHT(1.0)
+        multiplier = 1.0
+        if time_slot == "AM":
+            multiplier = 0.5
+        elif time_slot == "PM":
+            multiplier = 0.6
+        elif time_slot == "OVERNIGHT":
+            multiplier = 1.0
+            
+        final_price = int(base_price * multiplier)
+
+        # 멤버십 할인 (100% 할인 = 0원)
+        if is_member:
+            final_price = 0
+            
+        return final_price
+
+    def create_booking(self, unit_id: str, user_id: str, check_in: datetime.date, check_out: datetime.date, guests: int, 
+                       used_points: int = 0, invite_code: str = None, 
+                       # 하위 호환 및 booking.py 파라미터 맞춤
+                       campsite_id: str = None, time_slot: str = None, is_member: bool = False, membership_type: str = None, payment_amount: int = None
+                       ) -> Booking:
+        
+        user = self._users.get(user_id)
+        # 데모 유저가 없으면 생성 (booking.py의 "current_user" 대응)
+        if not user and user_id == "current_user":
+             user = User(id="current_user", name="게스트", email="guest@timebank.com")
+             self._users["current_user"] = user
+
+        if not user:
+             # Fallback
+             user = self._users.get("demo_user")
+             if not user:
+                raise ValueError("User not found")
+             user_id = user.id
+
+        # Unit or Campsite ID resolution
+        target_unit = None
+        if unit_id:
+            target_unit = self.find_unit_by_id(unit_id)
+        
+        # Campsite ID로 들어온 경우 첫 번째 Unit 선택 (간소화)
+        if not target_unit and campsite_id:
+            for c in self._all_campsites:
+                if c.id == campsite_id:
+                    if c.units:
+                        target_unit = c.units[0]
+                    break
+        
+        if not target_unit:
+             # Mock Unit if needed or raise error
+             # raise ValueError("Unit not found")
+             pass 
+
+        # 1. 가격 계산
+        if payment_amount is not None:
+            final_price = payment_amount
+            original_price = payment_amount # 추정
+        elif target_unit:
+            original_price = target_unit.price
+            final_price = original_price
+        else:
+            original_price = 0
+            final_price = 0
+
+        inviter_user = None
+        
+        # 2. 초대 코드 할인 적용 (5%)
+        if invite_code:
+            inviter_user = self.find_user_by_invite_code(invite_code)
+            if inviter_user and inviter_user.id != user_id:
+                discount = int(original_price * 0.05)
+                final_price -= discount
             else:
-                return 0 # 평일 시간제 무료
-                
-        return base_price # Fallback
+                 invite_code = None
 
-    def calculate_roi(self, loan_amount: int, monthly_revenue: int) -> Dict[str, float]:
-        """투자 수익률 계산."""
-        interest_rate = 0.10
-        operating_cost_ratio = 0.30
+        # 3. 포인트 사용
+        if used_points > 0:
+            if user.points >= used_points:
+                final_price -= used_points
+                if final_price < 0:
+                    used_points += final_price 
+                    final_price = 0
+                user.points -= used_points
+            else:
+                raise ValueError("Not enough points")
         
-        monthly_interest = (loan_amount * interest_rate) / 12
-        monthly_operating_cost = monthly_revenue * operating_cost_ratio
-        
-        net_profit = monthly_revenue - monthly_operating_cost - monthly_interest
-        
-        annual_profit = net_profit * 12
-        roi_percent = (annual_profit / loan_amount) * 100 if loan_amount > 0 else 0
-        
-        return {
-            "revenue": int(monthly_revenue),
-            "operating_cost": int(monthly_operating_cost),
-            "interest": int(monthly_interest),
-            "net_profit": int(net_profit),
-            "roi_percent": round(roi_percent, 1)
-        }
-
-    def create_booking(self, user_id: str, campsite_id: str, date: datetime.date, time_slot: str, 
-                      is_member: bool, membership_type: str, payment_amount: int) -> Optional[Booking]:
-        """예약 생성."""
-        # 중복 체크
-        for b in self._bookings:
-            if b.campsite_id == campsite_id and b.date == date and b.time_slot == time_slot and b.status == "CONFIRMED":
-                return None 
-        
-        new_booking = Booking(
-            id=f"B{len(self._bookings)+1:04d}",
+        # 4. 예약 생성
+        booking = Booking(
+            id=f"bk_{len(self._bookings)+1}",
+            unit_id=unit_id if unit_id else (campsite_id if campsite_id else "unknown"),
             user_id=user_id,
-            campsite_id=campsite_id,
-            date=date,
-            time_slot=time_slot,
-            status="CONFIRMED",
-            is_member=is_member,
-            membership_type=membership_type,
-            payment_amount=payment_amount
+            check_in=check_in,
+            check_out=check_out,
+            guests=guests,
+            original_price=original_price,
+            final_price=final_price,
+            used_points=used_points,
+            earned_points=0,
+            invite_code_used=invite_code
         )
-        self._bookings.append(new_booking)
-        return new_booking
+        
+        # 5. 리워드 로직
+        if final_price > 0:
+            reward_points = int(final_price * 0.05)
+            user.points += reward_points
+            booking.earned_points = reward_points
+            
+            if inviter_user:
+                referral_reward = int(final_price * 0.10)
+                inviter_user.points += referral_reward
+                inviter_user.referral_count += 1
+                inviter_user.total_earnings += referral_reward
+
+        self._bookings.append(booking)
+        return booking
 
 # 싱글톤 인스턴스
 _system_instance = TimeBankSystem()

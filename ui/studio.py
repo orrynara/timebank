@@ -59,7 +59,7 @@ def render_studio_page():
                             
                             if new_path:
                                 st.success("이미지 생성 완료!")
-                                st.image(new_path, caption="새로 생성된 배경", use_container_width=True)
+                                st.image(new_path, caption="새로 생성된 배경", width="stretch")
                             else:
                                 st.error("이미지 생성에 실패했습니다. (결과값 None)")
                                 
@@ -180,7 +180,7 @@ def render_studio_page():
                         st.video(file_path)
                         st.caption(f"🎬 {file_name}")
                     elif ext in ['.png', '.jpg', '.jpeg', '.webp']:
-                        st.image(file_path, use_container_width=True)
+                        st.image(file_path, width="stretch")
                         st.caption(f"🖼️ {file_name}")
                     else:
                         st.text(file_name)

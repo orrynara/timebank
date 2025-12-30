@@ -122,22 +122,23 @@ def render_booking_page():
                 
                 # 이미지 로드 (URL이면 st.image가 알아서 처리, 로컬이면 load_image_safe)
                 if img_path and img_path.startswith("http"):
-                    st.image(img_path, use_container_width=True) # URL 직접 사용
+                    st.image(img_path, width="stretch") # URL 직접 사용
                 else:
                     # 로컬 파일 체크
                     if img_path and os.path.exists(img_path):
-                        st.image(load_image_safe(img_path), use_container_width=True)
+                        st.image(load_image_safe(img_path), width="stretch")
                     else:
                         # Fallback: 지역별 생성 이미지 또는 기본 이미지
                         latest = _load_latest_image(campsite.region_id)
                         if latest:
-                            st.image(load_image_safe(latest), use_container_width=True)
+                            st.image(load_image_safe(latest), width="stretch")
                         else:
-                            st.image(load_image_safe("assets/img/caravan_main.jpg"), use_container_width=True)
+                            st.image(load_image_safe("assets/img/caravan_main.jpg"), width="stretch")
 
                 # 2) 텍스트 정보
                 st.markdown(f"<div class='card-title'>{campsite.name}</div>", unsafe_allow_html=True)
-                st.markdown(f"<div class='card-desc'>{campsite.location_desc}</div>", unsafe_allow_html=True)
+                # Detail Modal - 3: 위치 정보 명시 (이미 여기엔 location_desc가 있음, 카드 UI 개선)
+                st.markdown(f"<div class='card-desc'>📍 {campsite.location_desc}</div>", unsafe_allow_html=True)
                 
                 # 3) 가격 및 평점
                 st.markdown(f"""
@@ -164,19 +165,31 @@ def render_booking_page():
         if target_campsite:
             st.markdown("---")
             with st.container():
+                # Detail Modal - 3: 위치 정보 굵게 표시 (여기선 페이지 하단 열림 방식)
                 st.subheader(f"📝 예약 진행: {target_campsite.name}")
+                st.markdown(f"#### 📍 위치: **{target_campsite.location_desc}**")
                 
                 c1, c2 = st.columns([1, 1])
                 
                 with c1:
-                    # 날짜 선택
-                    date = st.date_input("날짜 선택", min_value=datetime.date.today())
+                    # Booking Flow - 4: Date Range
+                    today = datetime.date.today()
+                    date_range = st.date_input(
+                        "체크인 - 체크아웃",
+                        (today, today + datetime.timedelta(days=1)),
+                        min_value=today,
+                        format="YYYY/MM/DD"
+                    )
                     
-                    # 시간 선택
+                    # 날짜 범위 해석
+                    check_in = date_range[0] if isinstance(date_range, tuple) and len(date_range) > 0 else today
+                    check_out = date_range[1] if isinstance(date_range, tuple) and len(date_range) > 1 else check_in + datetime.timedelta(days=1)
+                    
+                    # 시간 선택 (기존 로직 유지, 단 1박 2일 우선)
                     time_options = {
+                        "OVERNIGHT": "🌙 1박 2일 (15:00 ~ 11:00) - 숙박",
                         "AM": "🌞 오전 Time (10:00 ~ 14:00) - 4시간",
-                        "PM": "🌅 오후 Time (15:00 ~ 19:00) - 4시간",
-                        "OVERNIGHT": "🌙 1박 2일 (15:00 ~ 11:00) - 숙박"
+                        "PM": "🌅 오후 Time (15:00 ~ 19:00) - 4시간"
                     }
                     selected_time_key = st.radio(
                         "이용 시간",
@@ -185,47 +198,53 @@ def render_booking_page():
                     )
 
                 with c2:
-                    # 회원 구분
+                    # Booking Flow - 4: Membership Toggle
                     user_type = st.radio(
                         "회원 구분",
-                        ["일반 회원 (비회원)", "타임뱅크 멤버십 회원"],
+                        ["일반 회원", "멤버십 회원"],
                         horizontal=True
                     )
-                    is_member = (user_type == "타임뱅크 멤버십 회원")
+                    is_member_selected = (user_type == "멤버십 회원")
                     
                     membership_type = "NONE"
-                    if is_member:
+                    if is_member_selected:
                         membership_type = st.selectbox("보유 멤버십", ["M_SMART (투지아 스마트)", "M_ROYAL (리조트 로얄)"]).split(" ")[0]
 
                     # 가격 계산
-                    is_weekend = (date.weekday() >= 5)
+                    is_weekend = (check_in.weekday() >= 5)
                     price = system.calculate_price(
                         target_campsite, 
-                        is_member, 
+                        is_member_selected, 
                         membership_type, 
                         selected_time_key, 
                         is_weekend
                     )
                     
                     # 결제 정보 표시
-                    st.success(f"**총 결제 금액: {price:,}원**")
-                    if price == 0:
+                    if is_member_selected:
                         st.caption("✨ 멤버십 혜택이 적용되었습니다!")
+                        st.info("이용권 차감 (무료)")
+                        # 실제 표시 가격 0원 처리
+                    else:
+                        st.success(f"**총 결제 금액: {price:,}원**")
                         
-                    if st.button("결제 및 예약 확정", type="primary", use_container_width=True):
+                    if st.button("결제 및 예약 확정", type="primary", width="stretch"):
                          booking = system.create_booking(
                             user_id="current_user",
                             campsite_id=target_campsite.id,
-                            date=date,
+                            check_in=check_in,
+                            check_out=check_out,
+                            guests=2, # Default guests for now in this view
                             time_slot=selected_time_key,
-                            is_member=is_member,
+                            is_member=is_member_selected,
                             membership_type=membership_type,
-                            payment_amount=price
+                            payment_amount=price if not is_member_selected else 0
                         )
                          
                          if booking:
                             st.balloons()
                             st.success(f"예약 완료! 예약번호: {booking.id}")
+                            st.markdown(f"**위치:** {target_campsite.name}")
+                            st.markdown(f"**기간:** {check_in} ~ {check_out}")
                          else:
-                            st.error("해당 시간에는 이미 예약이 있습니다.")
-
+                            st.error("예약 처리 중 오류가 발생했습니다.")

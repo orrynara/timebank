@@ -97,7 +97,7 @@ def render_admin_page():
             
             st.dataframe(
                 display_df, 
-                use_container_width=True,
+                width="stretch",
                 column_config={
                     "예약일자": st.column_config.DateColumn("예약 날짜", format="YYYY-MM-DD"),
                 },
