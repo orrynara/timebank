@@ -9,3 +9,19 @@ venv/
 
 # Environment variables (DO NOT COMMIT!)
 .env
+
+# Frontend local env files
+.env.*
+**/.env.local
+**/.env.*.local
+
+# Local Netlify folder
+.netlify
+
+# Snapshots
+restore_snapshot_*/
+
+# Frontend deps/build
+**/node_modules/
+**/dist/
+**/dist-ssr/

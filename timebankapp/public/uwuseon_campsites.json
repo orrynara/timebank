@@ -1,0 +1,130 @@
+[
+  {
+    "id": "1",
+    "name": "가평 리버사이드 캡슐 캠핑장",
+    "region": "경기",
+    "location": "경기도 가평군 북면 청정로 123",
+    "price": 280000,
+    "rating": 4.8,
+    "description": "북한강의 물안개를 감상하며 즐기는 미래형 캡슐 카라반. 프라이빗한 리버뷰와 모던한 인테리어가 조화를 이룹니다.",
+    "image": "/images/curated/curated_1_gapyeong_dusk_1600x1200.png",
+    "gallery": [
+      "/images/curated/curated_1_gapyeong_dusk_1600x1200.png",
+      "/images/curated/curated_1_gapyeong_dawn_1600x1200.png"
+    ],
+    "amenities": ["wifi", "coffee", "fire", "ac"],
+    "tags": ["Capsule", "Riverside", "Healing"]
+  },
+  {
+    "id": "2",
+    "name": "양평 갤럭시 로드 캠핑장",
+    "region": "경기",
+    "location": "경기도 양평군 서종면 은하수길 42",
+    "price": 320000,
+    "rating": 4.9,
+    "description": "도심에서 가장 가까운 별 관측 명소. 우주선을 닮은 카라반에서 밤하늘의 은하수를 만끽하세요.",
+    "image": "/images/curated/curated_2_yangpyeong_dusk_1600x1200.png",
+    "gallery": [
+      "/images/curated/curated_2_yangpyeong_dusk_1600x1200.png",
+      "/images/curated/curated_2_yangpyeong_dawn_1600x1200.png"
+    ],
+    "amenities": ["wifi", "fire", "wind"],
+    "tags": ["Stargazing", "Spaceship", "Couple"]
+  },
+  {
+    "id": "3",
+    "name": "제주 스타더스트 빌리지",
+    "region": "제주",
+    "location": "제주특별자치도 제주시 애월읍 별빛로 77",
+    "price": 420000,
+    "rating": 4.8,
+    "description": "제주의 푸른 밤, 쏟아지는 별빛 아래 자리 잡은 우주 정거장 컨셉의 캠핑 빌리지입니다.",
+    "image": "/images/curated/curated_3_jeju_dusk_1600x1200.png",
+    "gallery": [
+      "/images/curated/curated_3_jeju_dusk_1600x1200.png",
+      "/images/curated/curated_3_jeju_dawn_1600x1200.png"
+    ],
+    "amenities": ["wifi", "coffee", "wind"],
+    "tags": ["Jeju", "Premium", "Village"]
+  },
+  {
+    "id": "4",
+    "name": "포천 오로라 베이스캠프",
+    "region": "경기",
+    "location": "경기도 포천시 영북면 산정호수로 88",
+    "price": 300000,
+    "rating": 4.7,
+    "description": "산정호수의 맑은 공기와 함께 오로라 조명이 켜지는 환상적인 밤을 경험해보세요.",
+    "image": "/images/curated/curated_4_pocheon_dusk_1600x1200.png",
+    "gallery": [
+      "/images/curated/curated_4_pocheon_dusk_1600x1200.png",
+      "/images/curated/curated_4_pocheon_dawn_1600x1200.png"
+    ],
+    "amenities": ["fire", "coffee", "ac"],
+    "tags": ["Lake", "Aurora", "Family"]
+  },
+  {
+    "id": "5",
+    "name": "태안 썬셋 하버 카라반",
+    "region": "충청",
+    "location": "충청남도 태안군 안면읍 노을길 55",
+    "price": 360000,
+    "rating": 4.8,
+    "description": "서해안의 붉은 노을을 우주선 창문 너머로 감상하는 로맨틱한 힐링 스팟.",
+    "image": "/images/curated/curated_5_taean_dusk_1600x1200.png",
+    "gallery": [
+      "/images/curated/curated_5_taean_dusk_1600x1200.png",
+      "/images/curated/curated_5_taean_dawn_1600x1200.png"
+    ],
+    "amenities": ["wifi", "coffee", "wind"],
+    "tags": ["Sunset", "Ocean", "Romance"]
+  },
+  {
+    "id": "6",
+    "name": "강릉 파인 포레스트 스테이션",
+    "region": "강원",
+    "location": "강원도 강릉시 해안로 303",
+    "price": 340000,
+    "rating": 4.9,
+    "description": "울창한 소나무 숲 속에 착륙한 우주선들. 피톤치드 가득한 숲속 힐링 스테이션.",
+    "image": "/images/curated/curated_6_gangneung_dusk_1600x1200.png",
+    "gallery": [
+      "/images/curated/curated_6_gangneung_dusk_1600x1200.png",
+      "/images/curated/curated_6_gangneung_dawn_1600x1200.png"
+    ],
+    "amenities": ["wifi", "coffee", "fire"],
+    "tags": ["Forest", "Retreat", "Premium"]
+  },
+  {
+    "id": "7",
+    "name": "속초 설악 메테오 캠프",
+    "region": "강원",
+    "location": "강원도 속초시 설악산로 500",
+    "price": 390000,
+    "rating": 4.8,
+    "description": "설악산의 웅장한 바위 아래 유성우 컨셉으로 즐기는 특별한 하룻밤.",
+    "image": "/images/curated/curated_7_sokcho_dusk_1600x1200.png",
+    "gallery": [
+      "/images/curated/curated_7_sokcho_dusk_1600x1200.png",
+      "/images/curated/curated_7_sokcho_dawn_1600x1200.png"
+    ],
+    "amenities": ["fire", "ac", "wind"],
+    "tags": ["Mountain", "Meteor", "Adventure"]
+  },
+  {
+    "id": "8",
+    "name": "여수 밤바다 코스믹 존",
+    "region": "전라",
+    "location": "전라남도 여수시 돌산읍 우주로 99",
+    "price": 410000,
+    "rating": 4.9,
+    "description": "여수 밤바다의 낭만과 우주 여행의 설렘을 동시에. 바다 위에 떠 있는 듯한 뷰를 선사합니다.",
+    "image": "/images/curated/curated_8_yeosu_dusk_1600x1200.png",
+    "gallery": [
+      "/images/curated/curated_8_yeosu_dusk_1600x1200.png",
+      "/images/curated/curated_8_yeosu_dawn_1600x1200.png"
+    ],
+    "amenities": ["wifi", "coffee", "wind"],
+    "tags": ["Night View", "Ocean", "Luxury"]
+  }
+]
